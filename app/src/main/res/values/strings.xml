@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">HackathonAR</string>
+    <string name="need_permission">You need to give camera permissions for this to work</string>
+</resources>
