@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Augmented Image To View</string>
+    <string name="need_permission">You need to give camera permissions for this to work</string>
+
 </resources>

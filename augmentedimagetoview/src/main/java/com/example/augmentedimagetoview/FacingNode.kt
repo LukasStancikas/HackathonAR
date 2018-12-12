@@ -1,7 +1,5 @@
-package com.example.lukasstancikas.hackathonar
+package com.example.augmentedimagetoview
 
-import com.google.ar.core.Anchor
-import com.google.ar.sceneform.AnchorNode
 import com.google.ar.sceneform.FrameTime
 import com.google.ar.sceneform.math.Quaternion
 import com.google.ar.sceneform.math.Vector3
