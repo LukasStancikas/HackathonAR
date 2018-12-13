@@ -37,18 +37,18 @@ class MainActivity : GalleryLoadingActivity() {
     override fun onStart() {
         super.onStart()
         Observable.merge(
-            mainSubmit.clicks().map { LoadType.URL },
-            mainGallery.clicks().map { LoadType.GALLERY }
+                mainSubmit.clicks().map { LoadType.URL },
+                mainGallery.clicks().map { LoadType.GALLERY }
         )
-            .subscribe({ loadType ->
-                when (loadType) {
-                    LoadType.URL -> getImageFromUrl()
-                    LoadType.GALLERY -> getImageFileFromGallery()
-                    else -> {
+                .subscribe({ loadType ->
+                    when (loadType) {
+                        LoadType.URL -> getImageFromUrl()
+                        LoadType.GALLERY -> getImageFileFromGallery()
+                        else -> {
+                        }
                     }
-                }
-            }, Throwable::printStackTrace)
-            .addTo(disposable)
+                }, Throwable::printStackTrace)
+                .addTo(disposable)
     }
 
     override fun onStop() {
@@ -61,25 +61,25 @@ class MainActivity : GalleryLoadingActivity() {
         val name = mainNameInput.text.toString()
         if (name.isNotEmpty() && url.isNotEmpty()) {
             getImageFromUrlObservable(url, name)
-                .filter {
-                    it.bitmap != null
-                }
-                .doOnSubscribe {
-                    mainProgress.visibility = View.VISIBLE
-                }
-                .doOnTerminate {
-                    mainProgress.visibility = View.GONE
-                }
-                .subscribe(::onImageReady, Throwable::printStackTrace)
-                .addTo(disposable)
+                    .filter {
+                        it.bitmap != null
+                    }
+                    .doOnSubscribe {
+                        mainProgress.visibility = View.VISIBLE
+                    }
+                    .doOnTerminate {
+                        mainProgress.visibility = View.GONE
+                    }
+                    .subscribe(::onImageReady, Throwable::printStackTrace)
+                    .addTo(disposable)
         }
     }
 
 
     override fun onGalleryImageLoaded(data: FileData) {
         getBitmapFromFile(data)
-            .subscribe(::onImageReady, Throwable::printStackTrace)
-            .addTo(disposable)
+                .subscribe(::onImageReady, Throwable::printStackTrace)
+                .addTo(disposable)
     }
 
     @SuppressLint("CheckResult")
@@ -88,12 +88,12 @@ class MainActivity : GalleryLoadingActivity() {
         mainInput.setText("")
         hideKeyboard()
         RxPermissions(this)
-            .request(Manifest.permission.CAMERA)
-            .subscribe({
-                if (it) {
-                    launchArFragment(bitmapWrapper.bitmap!!, getViewForBitmap(bitmapWrapper))
-                }
-            },Throwable::printStackTrace)
+                .request(Manifest.permission.CAMERA)
+                .subscribe({
+                    if (it) {
+                        launchArFragment(bitmapWrapper.bitmap!!, getViewForBitmap(bitmapWrapper))
+                    }
+                }, Throwable::printStackTrace)
     }
 
     private fun getViewForBitmap(bitmapWrapper: BitmapWrapper): View {
@@ -107,18 +107,18 @@ class MainActivity : GalleryLoadingActivity() {
         return view
     }
 
-    private fun launchArFragment(bitmap:Bitmap, view: View) {
-        val cameraFragment = CameraFragment()
-        cameraFragment.readyListener = object : CameraFragment.OnReadyListener {
-            override fun onReady() {
-                cameraFragment.addImageToDb(bitmap, view, 500)
-            }
-
+    private fun launchArFragment(bitmap: Bitmap, view: View) {
+        val cameraFragments =   supportFragmentManager.fragments.filterIsInstance<CameraFragment>()
+        if (cameraFragments.isEmpty()) {
+            val cameraFragment = CameraFragment()
+            val transaction = supportFragmentManager.beginTransaction()
+            transaction.replace(R.id.mainContainer, cameraFragment)
+            transaction.addToBackStack(null)
+            transaction.commit()
+            cameraFragment.addImageToDb(bitmap, view, 500)
+        } else {
+            cameraFragments.first().addImageToDb(bitmap, view, 500)
         }
-        val transaction = supportFragmentManager.beginTransaction()
-        transaction.replace(R.id.mainContainer, cameraFragment)
-        transaction.addToBackStack(null)
-        transaction.commit()
 
     }
 

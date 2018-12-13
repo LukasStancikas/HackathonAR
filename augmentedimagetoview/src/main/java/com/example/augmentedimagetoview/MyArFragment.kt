@@ -15,7 +15,6 @@ class MyArFragment : ArFragment() {
         planeDiscoveryController.hide()
         planeDiscoveryController.setInstructionView(null)
         arSceneView.planeRenderer.isEnabled = false
-        updateListener?.onReady()
     }
 
     override fun onUpdate(frameTime: FrameTime?) {
@@ -27,6 +26,5 @@ class MyArFragment : ArFragment() {
 
     interface UpdateListener {
         fun onFrameUpdate(frame: Frame)
-        fun onReady()
     }
 }

@@ -30,14 +30,12 @@ import kotlinx.android.synthetic.main.item_image.view.*
 class CameraFragment : Fragment() {
 
     private val arFragment = MyArFragment()
-    var readyListener: OnReadyListener? = null
-        set(value) {
-            if (arFragment.isAdded && arFragment.arSceneView.scene != null) {
-                value?.onReady()
-            }
-        }
     private val disposable = CompositeDisposable()
     private val imageMap = hashMapOf<Int, ViewForImage>()
+    private val queue = mutableListOf<ImageInQueue>()
+
+    private val ready
+        get() = arFragment.isAdded && arFragment.arSceneView.scene != null
 
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -74,51 +72,57 @@ class CameraFragment : Fragment() {
 
 
     fun addImageToDb(bitmap: Bitmap, view: View?, dpsForMeter: Int) {
-        addImageToDbObservable(bitmap, view, dpsForMeter)
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .doOnSubscribe { cameraProgress.visibility = View.VISIBLE }
-                .doOnTerminate { cameraProgress.visibility = View.GONE }
-                .subscribe({
-                }, Throwable::printStackTrace)
-                .addTo(disposable)
+        queue.add(ImageInQueue(bitmap, view, dpsForMeter, false))
+        tryToAddImagesFromQueueToDb()
+    }
+
+    @Synchronized
+    private fun tryToAddImagesFromQueueToDb() {
+        if (ready && queue.any { !it.isAdding }) {
+            cameraProgress.visibility = View.VISIBLE
+            addImagesToDbObservable(queue.filter { !it.isAdding })
+                    .doOnTerminate { cameraProgress.visibility = View.GONE }
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe({
+                        queue.removeAll(it)
+                    }, Throwable::printStackTrace)
+                    .addTo(disposable)
+        }
     }
 
 
-    private fun addImageToDbObservable(bitmap: Bitmap, view: View?, dpsForMeter: Int): Observable<Int> {
-        return Observable.create {
-            val ready = arFragment.isAdded && arFragment.arSceneView.scene != null
-            if (ready) {
-                val db = AugmentedImageDatabase(arFragment.arSceneView.session)
-                val index = db.addImage("image", bitmap)
-                val config = Config(arFragment.arSceneView.session)
-                config.updateMode = Config.UpdateMode.LATEST_CAMERA_IMAGE
-                config.augmentedImageDatabase = db
-                config.focusMode = Config.FocusMode.AUTO
-                imageMap[index] = ViewForImage(view, dpsForMeter, false)
-                arFragment.arSceneView.session.configure(config)
-
-                it.onNext(index)
-                it.onComplete()
+    private fun addImagesToDbObservable(items: List<ImageInQueue>): Observable<List<ImageInQueue>> {
+        return Observable.create { emitter ->
+            val db = arFragment.arSceneView.session.config.augmentedImageDatabase
+            items.forEach {
+                it.isAdding = true
+                val index = db.addImage("image", it.bitmap)
+                imageMap[index] = ViewForImage(it.view, it.dpsForMeter, false)
             }
+            val config = arFragment.arSceneView.session.config
+            config.updateMode = Config.UpdateMode.LATEST_CAMERA_IMAGE
+            config.augmentedImageDatabase = db
+            config.focusMode = Config.FocusMode.AUTO
+            arFragment.arSceneView.session.configure(config)
+
+            emitter.onNext(items)
+            emitter.onComplete()
         }
     }
 
     private val newListener = object : MyArFragment.UpdateListener {
-        override fun onReady() {
-            readyListener?.onReady()
-        }
-
         override fun onFrameUpdate(frame: Frame) {
+            tryToAddImagesFromQueueToDb()
             val updatedAugmentedImages = frame.getUpdatedTrackables(AugmentedImage::class.java)
             Log.e("AUGMENTED IMAGE SIZE", updatedAugmentedImages.size.toString())
             for (img in updatedAugmentedImages) {
 
                 if (img.trackingState == TrackingState.TRACKING) {
                     val item = imageMap[img.index]
-                    item?.takeIf { !it.added }?.let { viewForImage ->
+                    item?.takeIf { !it.viewAddedToScene }?.let { viewForImage ->
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                            imageMap[img.index]?.added = true
+                            imageMap[img.index]?.viewAddedToScene = true
                             loadViewForImage(viewForImage)
                                     .subscribe({
                                         val anchorNode = AnchorNode(img.createAnchor(img.centerPose))
@@ -158,8 +162,5 @@ class CameraFragment : Fragment() {
         }
     }
 
-    interface OnReadyListener {
-        fun onReady()
-    }
 
 }
