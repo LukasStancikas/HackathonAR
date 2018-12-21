@@ -99,6 +99,7 @@ class MainActivity : GalleryLoadingActivity() {
     private fun getViewForBitmap(bitmapWrapper: BitmapWrapper): View {
         val view = LayoutInflater.from(this).inflate(R.layout.item_image_custom, null, false)
         view.itemImageText.text = bitmapWrapper.name
+        view.itemImageIcon.setImageBitmap(bitmapWrapper.bitmap)
         view.itemImageButton.setOnClickListener {
             val url = "http://google.com"
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
@@ -115,9 +116,9 @@ class MainActivity : GalleryLoadingActivity() {
             transaction.replace(R.id.mainContainer, cameraFragment)
             transaction.addToBackStack(null)
             transaction.commit()
-            cameraFragment.addImageToDb(bitmap, view, 500)
+            cameraFragment.addImageToDb(bitmap, view, 700)
         } else {
-            cameraFragments.first().addImageToDb(bitmap, view, 500)
+            cameraFragments.first().addImageToDb(bitmap, view, 700)
         }
 
     }
